@@ -494,6 +494,11 @@ struct msm_actuator_move_params_t {
 	struct damping_params_t *ringing_params;
 };
 
+struct msm_mot_actuator_tuning_params_t {
+	int16_t infinity_dac;
+	int16_t macro_dac;
+};
+
 struct msm_actuator_tuning_params_t {
 	int16_t initial_code;
 	uint16_t pwd_step;
@@ -528,6 +533,7 @@ struct msm_actuator_params_t {
 struct msm_actuator_set_info_t {
 	struct msm_actuator_params_t actuator_params;
 	struct msm_actuator_tuning_params_t af_tuning_params;
+	struct msm_mot_actuator_tuning_params_t mot_af_tuning_params;
 };
 
 struct msm_actuator_get_info_t {
@@ -692,6 +698,18 @@ struct msm_camera_i2c_reg_setting32 {
 	enum msm_camera_qup_i2c_write_batch_t qup_i2c_batch;
 };
 
+struct msm_camera_i2c_read_config32 {
+	uint16_t slave_addr;
+	uint16_t reg_addr;
+	enum msm_camera_i2c_data_type data_type;
+	compat_uptr_t data;
+};
+
+struct msm_mot_actuator_tuning_params_t32 {
+	int16_t infinity_dac;
+	int16_t macro_dac;
+};
+
 struct msm_actuator_tuning_params_t32 {
 	int16_t initial_code;
 	uint16_t pwd_step;
@@ -719,6 +737,7 @@ struct msm_actuator_params_t32 {
 struct msm_actuator_set_info_t32 {
 	struct msm_actuator_params_t32 actuator_params;
 	struct msm_actuator_tuning_params_t32 af_tuning_params;
+	struct msm_mot_actuator_tuning_params_t32 mot_af_tuning_params;
 };
 
 struct sensor_init_cfg_data32 {

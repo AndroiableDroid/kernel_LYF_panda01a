@@ -21,7 +21,7 @@
 #define I2C_SEQ_REG_DATA_MAX    256
 #define I2C_REG_DATA_MAX       (8*1024)
 
-#define MAX_ACTUATOR_REG_TBL_SIZE 8
+#define MAX_ACTUATOR_REG_TBL_SIZE 15
 #define MAX_ACTUATOR_REGION       5
 #define NUM_ACTUATOR_DIR          2
 #define MAX_ACTUATOR_SCENARIO     8
@@ -155,11 +155,13 @@ enum msm_actuator_write_type {
 	MSM_ACTUATOR_WRITE_DIR_REG,
 	MSM_ACTUATOR_POLL,
 	MSM_ACTUATOR_READ_WRITE,
+	MSM_ACTUATOR_WRITE_REG,
 };
 
 enum msm_actuator_i2c_operation {
 	MSM_ACT_WRITE = 0,
 	MSM_ACT_POLL,
+	MSM_ACT_READ_SET,
 };
 
 enum actuator_type {
@@ -167,6 +169,7 @@ enum actuator_type {
 	ACTUATOR_PIEZO,
 	ACTUATOR_HVCM,
 	ACTUATOR_BIVCM,
+	ACTUATOR_MOT_HVCM,
 };
 
 enum msm_flash_driver_type {
