@@ -1491,6 +1491,18 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 	} else if (hap->play_mode == QPNP_HAP_BUFFER ||
 			hap->play_mode == QPNP_HAP_DIRECT) {
 		if (on) {
+			/*
+			 * For auto resonance detection to work properly,
+			 * sufficient back-emf has to be generated. In general,
+			 * back-emf takes some time to build up. When the auto
+			 * resonance mode is chosen as QWD, high-z will be
+			 * applied for every LRA cycle and hence there won't be
+			 * enough back-emf at the start-up. Hence, the motor
+			 * needs to vibrate for few LRA cycles after the PLAY
+			 * bit is asserted. So disable the auto resonance here
+			 * and enable it after the sleep of
+			 * 'time_required_to_generate_back_emf_us' is completed.
+			 */
 			if (hap->correct_lra_drive_freq ||
 				hap->auto_res_mode == QPNP_HAP_AUTO_RES_QWD)
 				qpnp_hap_auto_res_enable(hap, 0);
@@ -1504,9 +1516,8 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 			if (hap->act_type == QPNP_HAP_LRA &&
 				(hap->correct_lra_drive_freq ||
 				hap->auto_res_mode == QPNP_HAP_AUTO_RES_QWD)) {
-				usleep_range(AUTO_RES_ENABLE_TIMEOUT,
-					(AUTO_RES_ENABLE_TIMEOUT + 1));
-
+				usleep_range(back_emf_delay_us,
+							back_emf_delay_us + 1);
 				rc = qpnp_hap_auto_res_enable(hap, 1);
 				if (rc < 0)
 					return rc;
