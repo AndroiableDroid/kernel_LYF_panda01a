@@ -220,8 +220,7 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 
 	if (!rx_buf || !panel_reg_buf) {
 		pr_err("not enough memory to hold panel reg dump\n");
-		rc = -ENOMEM;
-		goto read_reg_fail;
+		return -ENOMEM;
 	}
 
 	if (mdata->debug_inf.debug_enable_clock)
@@ -231,7 +230,9 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 	mdss_dsi_panel_cmd_read(ctrl_pdata, panel_reg[0], panel_reg[1],
 				NULL, rx_buf, dbg->cnt);
 
-	len = scnprintf(panel_reg_buf, reg_buf_len, "0x%02zx: ", dbg->off);
+	len = snprintf(panel_reg_buf, reg_buf_len, "0x%02zx: ", dbg->off);
+	if (len < 0 || len >= sizeof(panel_reg_buf))
+		goto read_reg_fail;
 
 	for (i = 0; (len < reg_buf_len) && (i < ctrl_pdata->rx_len); i++)
 		len += scnprintf(panel_reg_buf + len, reg_buf_len - len,
@@ -243,8 +244,8 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 	if (mdata->debug_inf.debug_enable_clock)
 		mdata->debug_inf.debug_enable_clock(0);
 
-	if ((count < reg_buf_len)
-			|| (copy_to_user(user_buf, panel_reg_buf, len)))
+	if ((count < sizeof(panel_reg_buf))
+			|| copy_to_user(user_buf, panel_reg_buf, len))
 		goto read_reg_fail;
 
 	kfree(rx_buf);
@@ -256,7 +257,7 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 read_reg_fail:
 	kfree(rx_buf);
 	kfree(panel_reg_buf);
-	return rc;
+	return -EFAULT;
 }
 
 static const struct file_operations panel_off_fops = {
@@ -985,10 +986,10 @@ static ssize_t mdss_debug_perf_bw_limit_read(struct file *file,
 		temp_settings++;
 	}
 
-	if (len < 0)
+	if (len < 0 || len >= sizeof(buf))
 		return 0;
 
-	if (copy_to_user(buff, buf, len))
+	if ((count < sizeof(buf)) || copy_to_user(buff, buf, len))
 		return -EFAULT;
 
 	*ppos += len;	/* increase offset */
