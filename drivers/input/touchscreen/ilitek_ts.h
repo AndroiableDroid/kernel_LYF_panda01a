@@ -42,7 +42,7 @@
 #define PLAT      QUALCOM
 
 #define CLOCK_INTERRUPT
-#define ILI_UPDATE_FW
+//#define ILI_UPDATE_FW
 #define TOUCH_PROTOCOL_B
 #define REPORT_THREAD
 #define HALL_CHECK
