@@ -1332,10 +1332,10 @@ int ilitek_i2c_suspend(struct i2c_client *client, pm_message_t mesg)
 }
 int ilitek_i2c_resume_test(void)
 {
-//#ifdef GESTURE
+#ifdef GESTURE
     if(ilitek_gesture_enable == 1)
 	    system_resume_ilitek = 1;
-//#endif
+#endif
 
 	if (update_wait_flag == 1) {
 		tp_log_info("%s,ilitek_i2c_resume  ilitek waiting update so return\n", __func__);
@@ -1358,12 +1358,11 @@ int ilitek_i2c_resume_test(void)
 	else{
 		i2c.stop_polling = 0;
 		tp_log_info("%s, start i2c thread polling\n", __func__);
-	} 
+	}
 	return 0;
 }
 int ilitek_i2c_resume(struct i2c_client *client)
 {
-/*
 #ifdef GESTURE
 	system_resume_ilitek = 1;
 #endif
@@ -1389,7 +1388,7 @@ int ilitek_i2c_resume(struct i2c_client *client)
 	else{
 		i2c.stop_polling = 0;
 		tp_log_info("%s, start i2c thread polling\n", __func__);
-	} */
+	}
 	return 0;
 }
 
