@@ -8,3 +8,4 @@ endif
 if ARCH_MSM
 source "drivers/platform/msm/Kconfig"
 endif
+source "drivers/platform/panda01a/Kconfig"
