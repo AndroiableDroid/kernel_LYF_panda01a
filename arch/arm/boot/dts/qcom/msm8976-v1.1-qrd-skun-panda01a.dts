@@ -14,20 +14,16 @@
 /dts-v1/;
 
 #include "msm8976-v1.1.dtsi"
-#include "msm8976-qrd-skun.dtsi"
+#include "./panda01a/msm8976-qrd-skun.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM8976 V1.1 QRD SKUN";
 	compatible = "qcom,msm8976-v1.1-qrd-skun-dvt", "qcom,msm8976-qrd",
 		   "qcom,msm8976", "qcom,qrd";
-	qcom,board-id= <0x5000b 0>;
+	qcom,board-id= <0x1000b 1>;
 };
 
 &soc {
-	sound-9335 {
-		status = "disabled";
-	};
-
 	sound {
 		compatible = "qcom,msm8952-audio-codec";
 		qcom,model = "msm8976-skun-snd-card";
@@ -47,6 +43,8 @@
 		qcom,msm-hs-micbias-type = "internal";
 		qcom,msm-micbias1-ext-cap;
 		qcom,msm-micbias2-ext-cap;
+		qcom,msm-spk-ext-pa = <&msm_gpio 132 0>;
+		qcom,msm-ext-hp-switch = <&msm_gpio 142 0>;
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
 			"SPK_RX_BIAS", "MCLK",
@@ -67,8 +65,8 @@
 		pinctrl-names =
 			"all_off",
 			"pri_i2s_act";
-		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus>;
-		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act>;
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cdc_ext_spk_pa_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cdc_ext_spk_pa_act>;
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
 				<&afe>, <&lsm>, <&routing>, <&lpa>,
@@ -106,12 +104,19 @@
 				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
 		asoc-codec = <&stub_codec>, <&pm8950_cajon_dig>;
 		asoc-codec-names = "msm-stub-codec.1", "cajon_codec";
-		asoc-wsa-codec-names = "wsa881x-i2c-codec.8-000f";
-		asoc-wsa-codec-prefixes = "SpkrMono";
+	};
 
-		msm-vdd-wsa-switch-supply = <&pm8950_l13>;
-		qcom,msm-vdd-wsa-switch-voltage = <3075000>;
-		qcom,msm-vdd-wsa-switch-current = <5000>;
+	mdss_mdp: qcom,mdss_mdp@1a00000 {
+		mdss_fb0: qcom,mdss_fb_primary {
+			/delete-property/ qcom,mdss-fb-splash-logo-enabled;
+		};
+	};
+
+	qcom,ion {
+		qcom,ion-heap@21 {
+			reg = <0x15>;
+			qcom,ion-heap-type = "SYSTEM_CONFIG";
+		};
 	};
 
 	i2c@7af8000 {
@@ -189,11 +194,6 @@
 			reg = <0x45>;
 		};
 	};
-};
-
-&led_flash0{
-	qcom,flash-source = <&pmi8950_flash0>;
-	qcom,torch-source = <&pmi8950_torch0>;
 };
 
 &slim_msm {
