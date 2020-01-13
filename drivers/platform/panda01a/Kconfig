@@ -1,0 +1,8 @@
+config MACH_PANDA
+	bool "LYF Panda01a"
+	depends on ARCH_MSM8916
+	help
+	  Support for LYF mobee01a variants
+	  make macro CONFIG_MACH_PANDA WORKED
+
+
