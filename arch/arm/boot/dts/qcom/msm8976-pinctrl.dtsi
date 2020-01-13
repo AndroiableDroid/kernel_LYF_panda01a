@@ -49,6 +49,42 @@
 			};
 		};
 
+		cdc-ext-spk-pa {
+			qcom,pins = <&gp 132>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "cdc-ext-spk-pa";
+			cdc_ext_spk_pa_act: ext_spk_pa_on {
+				drive-strength = <8>;
+				output-low;
+				bias-pull-none;
+			};
+			cdc_ext_spk_pa_sus: ext_spk_pa_off {
+				drive-strength = <2>;
+				output-low;
+				bias-disable;
+			};
+		};
+
+		cdc-ext-hp-switch {
+			qcom,pins = <&gp 142>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "cdc-ext-hp-switch";
+
+			ext_p_switch_on {
+				drive-strength = <8>;
+				output-low;
+				bias-pull-none;
+			};
+
+			ext_hp_switch_off {
+				drive-strength = <2>;
+				output-low;
+				bias-disable;
+			};
+		};
+
 		cdc-pdm-lines {
 			qcom,pins = <&gp 120>, <&gp 121>;
 			qcom,num-grp-pins = <2>;
@@ -509,6 +545,24 @@
 			i2c_6_sleep: i2c_6_sleep {
 				drive-strength = <2>; /* 2 MA */
 				bias-disable; /* No PULL */
+			};
+		};
+
+		pmx_i2c_7 {
+			/* CLK, DATA */
+			qcom,pins = <&gp 110>, <&gp 111>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <3>;
+			label = "pmx_i2c_7";
+			/* active state */
+			i2c_7_active: i2c_7_active {
+				drive-strength = <2>; /* 8 MA */
+				bias-pull-up; /* PULL UP */
+			};
+			/* suspend state */
+			i2c_7_sleep: i2c_7_sleep {
+				drive-strength = <2>; /* 8 MA */
+				bias-pull-up; /* PULL UP */
 			};
 		};
 
@@ -1574,6 +1628,51 @@
 			nfc_disable_suspend: suspend {
 				drive-strength = <6>;
 				bias-disable;
+			};
+		};
+
+		panda_no_used_pin {
+			qcom,pins = <&gp 20>,<&gp 36>,<&gp 66>,<&gp 107>,<&gp 130>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <5>;
+			label = "panda_no_used_pin";
+			panda_no_used_pins_default: panda_no_used_pin_default {
+				drive-strength = <2>;
+				output-low;
+				bias-disable;
+			};
+		};
+
+		cam_sensor_flash_default {
+			qcom,pins = <&gp 122>,<&gp 123>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "cam_sensor_flash_default";
+			cam_sensor_flash_default: cam_sensor_flash_default {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		cam_sensor_flash_sleep {
+			qcom,pins = <&gp 122>,<&gp 123>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "cam_sensor_flash_sleep";
+			cam_sensor_flash_sleep: cam_sensor_flash_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		hall_int_pin {
+			qcom,pins = <&gp 112>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "hall-irq";
+			hall_sensor_int_default: hall_sensor_int_default {
+				drive-strength = <2>;
+				bias-pull-up;
 			};
 		};
 	};
