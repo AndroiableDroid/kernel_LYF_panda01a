@@ -1247,7 +1247,6 @@ int ilitek_i2c_suspend(struct i2c_client *client, pm_message_t mesg)
 		tp_log_info("%s: tp fw is updating,return\n", __func__);
 		return 0;
 	}
-	/*
 	tp_log_info("Enter ilitek_i2c_suspend 0x01 0x00, 0x0A 0x01\n");
 	cmd[0] = 0x01;
 	cmd[1] = 0x00;
@@ -1256,7 +1255,6 @@ int ilitek_i2c_suspend(struct i2c_client *client, pm_message_t mesg)
 		tp_log_err("%s, 0x01 0x00 set tp suspend err, ret %d\n", __func__, ret);
 	}
 	msleep(10);
-	*/
 	printk("Enter ilitek_i2c_suspend 0x0A 0x01\n");
 	cmd[0] = 0x0A;
 	cmd[1] = 0x01;
@@ -1328,37 +1326,6 @@ int ilitek_i2c_suspend(struct i2c_client *client, pm_message_t mesg)
 #endif
 	tp_log_debug("%s,ret=%d\n",__func__,ret);
 	input_sync(i2c.input_dev);
-	return 0;
-}
-int ilitek_i2c_resume_test(void)
-{
-#ifdef GESTURE
-    if(ilitek_gesture_enable == 1)
-	    system_resume_ilitek = 1;
-#endif
-
-	if (update_wait_flag == 1) {
-		tp_log_info("%s,ilitek_i2c_resume  ilitek waiting update so return\n", __func__);
-		return 0;
-	}
-
-	if(i2c.firmware_updating) {
-		tp_log_info("%s: tp fw is updating,return\n", __func__);
-		return 0;
-	}
-	tp_log_info("ENTER %s i2c.reset_request_success = %x i2c.valid_irq_request=%d\n", __FUNCTION__,i2c.reset_request_success,i2c.valid_irq_request);
-	if(i2c.reset_request_success)
-	{
-		ilitek_reset(i2c.reset_gpio);
-	}
-	i2c.function_ctrl = 0;
-	if(i2c.valid_irq_request != 0){
-		ilitek_i2c_irq_enable();
-	}
-	else{
-		i2c.stop_polling = 0;
-		tp_log_info("%s, start i2c thread polling\n", __func__);
-	}
 	return 0;
 }
 int ilitek_i2c_resume(struct i2c_client *client)
