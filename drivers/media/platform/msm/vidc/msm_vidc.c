@@ -532,9 +532,9 @@ int map_and_register_buf(struct msm_vidc_inst *inst, struct v4l2_buffer *b)
 			goto exit;
 
 		if (!is_dynamic_output_buffer_mode(b, inst))
-			same_fd_handle = get_same_fd_buffer(
-						&inst->registeredbufs,
-						b->m.planes[i].reserved[0]);
+			same_fd_handle = i ? get_same_fd_buffer(
+					&inst->registeredbufs,
+					b->m.planes[i].reserved[0]) : NULL;
 
 		populate_buf_info(binfo, b, i);
 		if (same_fd_handle) {
@@ -1429,7 +1429,8 @@ static void cleanup_instance(struct msm_vidc_inst *inst)
 		debugfs_remove_recursive(inst->debugfs_root);
 
 		mutex_lock(&inst->pending_getpropq.lock);
-		WARN_ON(!list_empty(&inst->pending_getpropq.list));
+		WARN_ON(!list_empty(&inst->pending_getpropq.list)
+			&& (msm_vidc_debug & VIDC_INFO));
 		mutex_unlock(&inst->pending_getpropq.lock);
 	}
 }
