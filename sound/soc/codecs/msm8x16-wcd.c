@@ -305,6 +305,73 @@ static void *adsp_state_notifier;
 
 static struct snd_soc_codec *registered_codec;
 
+#ifdef CONFIG_MACH_PANDA
+enum {
+	EXP_SPK_PA_OFF = 0,
+	EXP_SPK_PA_MODE_1,
+	EXP_SPK_PA_MODE_2,
+	EXP_SPK_PA_MODE_3,
+	EXP_SPK_PA_MODE_4,
+};
+
+static int msm8x16_ext_spk_pa_mode_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+
+    switch(msm8x16_wcd->ext_spk_pa_mode) {
+        case EXP_SPK_PA_OFF:
+            ucontrol->value.integer.value[0] = EXP_SPK_PA_OFF;
+            break;
+        case EXP_SPK_PA_MODE_1:
+            ucontrol->value.integer.value[0] = EXP_SPK_PA_MODE_1;
+            break;
+        case EXP_SPK_PA_MODE_2:
+            ucontrol->value.integer.value[0] = EXP_SPK_PA_MODE_2;
+            break;
+        case EXP_SPK_PA_MODE_3:
+            ucontrol->value.integer.value[0] = EXP_SPK_PA_MODE_3;
+            break;
+        case EXP_SPK_PA_MODE_4:
+            ucontrol->value.integer.value[0] = EXP_SPK_PA_MODE_4;
+            break;
+        default:
+			pr_err("%s: ERROR: ext_spk_pa_mode= %d\n",__func__, msm8x16_wcd->ext_spk_pa_mode);
+			return -EINVAL;
+    }
+	dev_dbg(codec->dev, "%s: ext_spk_pa_mode = %d\n", __func__, msm8x16_wcd->ext_spk_pa_mode);
+
+	return 0;
+}
+
+static int msm8x16_ext_spk_pa_mode_set(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+
+	dev_dbg(codec->dev, "%s: ucontrol->value.integer.value[0] = %ld\n",
+			__func__, ucontrol->value.integer.value[0]);
+
+	switch (ucontrol->value.integer.value[0]) {
+		case EXP_SPK_PA_OFF:
+		case EXP_SPK_PA_MODE_1:
+		case EXP_SPK_PA_MODE_2:
+		case EXP_SPK_PA_MODE_3:
+		case EXP_SPK_PA_MODE_4:
+			msm8x16_wcd->ext_spk_pa_mode = ucontrol->value.integer.value[0];
+			break;
+		default:
+			pr_err("%s: invalid ext spk pa mode value: %d\n", __func__,
+						(int)ucontrol->value.integer.value[0]);
+			return -EINVAL;
+	}
+	dev_dbg(codec->dev, "%s: set ext_spk_pa_mode as = %d\n",__func__, msm8x16_wcd->ext_spk_pa_mode);
+	return 0;
+}
+#endif
+
 static int get_codec_version(struct msm8x16_wcd_priv *msm8x16_wcd)
 {
 	if (msm8x16_wcd->codec_version == CAJON_2_0)
@@ -2425,6 +2492,15 @@ static const struct soc_enum msm8x16_wcd_ext_spk_boost_ctl_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, msm8x16_wcd_ext_spk_boost_ctrl_text),
 };
 
+#ifdef CONFIG_MACH_PANDA
+static const char * const ext_spk_pa_mode_text[] = {
+		"OFF", "MODE_1", "MODE_2", "MODE_3", "MODE_4"};
+
+static const struct soc_enum ext_spk_pa_mode_enum[] = {
+		SOC_ENUM_SINGLE_EXT(5, ext_spk_pa_mode_text),
+};
+#endif
+
 /*cut of frequency for high pass filter*/
 static const char * const cf_text[] = {
 	"MIN_3DB_4Hz", "MIN_3DB_75Hz", "MIN_3DB_150Hz"
@@ -2446,6 +2522,11 @@ static const struct soc_enum cf_rxmix3_enum =
 	SOC_ENUM_SINGLE(MSM8X16_WCD_A_CDC_RX3_B4_CTL, 0, 3, cf_text);
 
 static const struct snd_kcontrol_new msm8x16_wcd_snd_controls[] = {
+
+#ifdef CONFIG_MACH_PANDA
+	SOC_ENUM_EXT("Ext Spk PA Mode", ext_spk_pa_mode_enum[0],
+		msm8x16_ext_spk_pa_mode_get, msm8x16_ext_spk_pa_mode_set),
+#endif
 
 	SOC_ENUM_EXT("Boost Option", msm8x16_wcd_boost_option_ctl_enum[0],
 		msm8x16_wcd_boost_option_get, msm8x16_wcd_boost_option_set),
@@ -3890,6 +3971,14 @@ void wcd_imped_config(struct snd_soc_codec *codec,
 			break;
 		case CAJON:
 		case CAJON_2_0:
+#ifdef CONFIG_MACH_PANDA
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_ANALOG_RX_EAR_CTL,
+				0x20, 0x00);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_ANALOG_NCP_VCTRL,
+				0x07, 0x04);
+#else
 			if (value >= 13) {
 				snd_soc_update_bits(codec,
 					MSM8X16_WCD_A_ANALOG_RX_EAR_CTL,
@@ -3905,6 +3994,7 @@ void wcd_imped_config(struct snd_soc_codec *codec,
 					MSM8X16_WCD_A_ANALOG_NCP_VCTRL,
 					0x07, 0x04);
 			}
+#endif
 			break;
 		}
 	} else {
@@ -4570,14 +4660,47 @@ static int msm8x16_wcd_codec_enable_spk_ext_pa(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMU:
 		dev_dbg(w->codec->dev,
 			"%s: enable external speaker PA\n", __func__);
+#ifndef CONFIG_MACH_PANDA
 		if (msm8x16_wcd->codec_spk_ext_pa_cb)
 			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 1);
+#else
+		if (msm8x16_wcd->codec_spk_ext_pa_cb
+			&& msm8x16_wcd->ext_spk_pa_mode >= EXP_SPK_PA_MODE_1
+			&& msm8x16_wcd->ext_spk_pa_mode <= EXP_SPK_PA_MODE_4)
+		{
+			int i = 0;
+			pr_err("%s: enable external speaker PA,ext_spk_pa_mode=%d\n",
+				__func__, msm8x16_wcd->ext_spk_pa_mode);
+			for(i = 0;i < msm8x16_wcd->ext_spk_pa_mode; i++)
+			{
+				msm8x16_wcd->codec_spk_ext_pa_cb(codec, 1);
+				udelay(2);
+				if(i != (msm8x16_wcd->ext_spk_pa_mode -1))
+				{
+					msm8x16_wcd->codec_spk_ext_pa_cb(codec, 0);
+					udelay(2);
+				}
+			}
+			mdelay(5);
+		}
+#endif
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		dev_dbg(w->codec->dev,
 			"%s: enable external speaker PA\n", __func__);
+#ifndef CONFIG_MACH_PANDA
 		if (msm8x16_wcd->codec_spk_ext_pa_cb)
 			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 0);
+#else
+		if (msm8x16_wcd->codec_spk_ext_pa_cb
+			&& msm8x16_wcd->ext_spk_pa_mode >= EXP_SPK_PA_MODE_1
+			&& msm8x16_wcd->ext_spk_pa_mode <= EXP_SPK_PA_MODE_4)
+		{
+			//pr_err("%s: disable external speaker PA,ext_spk_pa_mode=%d\n", 
+			//	__func__,ext_spk_pa_mode);
+			msm8x16_wcd->codec_spk_ext_pa_cb(codec, 0);
+		}
+#endif
 		break;
 	}
 	return 0;
