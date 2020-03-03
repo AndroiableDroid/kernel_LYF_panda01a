@@ -234,6 +234,9 @@ struct msm8916_asoc_mach_data {
 	void __iomem *vaddr_gpio_mux_quin_ctl;
 	void __iomem *vaddr_gpio_mux_pcm_ctl;
 	struct on_demand_supply wsa_switch_supply;
+#ifdef CONFIG_MACH_PANDA
+	int hp_switch_en_gpio;
+#endif
 };
 
 struct msm8x16_wcd_pdata {
@@ -305,6 +308,9 @@ struct msm8x16_wcd_priv {
 	unsigned long status_mask;
 	struct wcd_imped_i_ref imped_i_ref;
 	enum wcd_mbhc_imp_det_pin imped_det_pin;
+#ifdef CONFIG_MACH_PANDA
+	int (*codec_headphone_switch_cb)(struct snd_soc_codec *codec, int enable);
+#endif
 };
 
 extern int msm8x16_wcd_mclk_enable(struct snd_soc_codec *codec, int mclk_enable,
@@ -318,5 +324,12 @@ extern void msm8x16_wcd_hs_detect_exit(struct snd_soc_codec *codec);
 extern void msm8x16_wcd_spk_ext_pa_cb(
 		int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,
 		int enable), struct snd_soc_codec *codec);
+
+#ifdef CONFIG_MACH_PANDA
+extern void msm8x16_wcd_headphone_switch(
+		int (*codec_headphone_switch)(struct snd_soc_codec *codec,
+		int enable), struct snd_soc_codec *codec);
+#endif
+
 #endif
 
