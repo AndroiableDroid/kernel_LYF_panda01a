@@ -511,6 +511,18 @@ void msm8x16_wcd_spk_ext_pa_cb(
 	msm8x16_wcd->codec_spk_ext_pa_cb = codec_spk_ext_pa;
 }
 
+#ifdef CONFIG_MACH_PANDA
+void msm8x16_wcd_headphone_switch(
+		int (*codec_headphone_switch)(struct snd_soc_codec *codec,
+			int enable), struct snd_soc_codec *codec)
+{
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+
+	pr_debug("%s: Enter\n", __func__);
+	msm8x16_wcd->codec_headphone_switch_cb = codec_headphone_switch;
+}
+#endif
+
 static void msm8x16_wcd_compute_impedance(struct snd_soc_codec *codec, s16 l,
 				s16 r, uint32_t *zl, uint32_t *zr, bool high)
 {

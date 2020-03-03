@@ -55,6 +55,10 @@ enum btsco_rates {
 	RATE_16KHZ_ID,
 };
 
+#ifdef CONFIG_MACH_PANDA
+static int switch_en_gpio = -1;
+#endif
+
 static bool ext_codec;
 
 static int msm8952_auxpcm_rate = 8000;
@@ -139,6 +143,9 @@ static const char *const loopback_mclk_text[] = {"DISABLE", "ENABLE"};
 static const char *const proxy_rx_ch_text[] = {"One", "Two", "Three", "Four",
 	"Five", "Six", "Seven", "Eight"};
 static const char *const vi_feed_ch_text[] = {"One", "Two"};
+#ifdef CONFIG_MACH_PANDA
+static const char *const switch_en_function[] = {"Off", "On"};
+#endif
 
 static inline int param_is_mask(int p)
 {
@@ -330,6 +337,69 @@ static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 	return 0;
 }
 
+#ifdef CONFIG_MACH_PANDA
+int is_ext_hp_switch_gpio_support(struct platform_device *pdev,
+			struct msm8916_asoc_mach_data *pdata)
+{
+	const char *hp_switch_en = "qcom,msm-ext-hp-switch";
+
+	pr_err("%s:Enter\n", __func__);
+
+	pdata->hp_switch_en_gpio = of_get_named_gpio(pdev->dev.of_node,
+				hp_switch_en, 0);
+
+	if (pdata->hp_switch_en_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"%s: missing %s in dt node\n", __func__, hp_switch_en);
+	} else {
+		if (!gpio_is_valid(pdata->hp_switch_en_gpio)) {
+			pr_err("%s: Invalid switch-en gpio: %d",
+				__func__, pdata->hp_switch_en_gpio);
+			return -EINVAL;
+		}
+		switch_en_gpio = pdata->hp_switch_en_gpio;
+		gpio_direction_output(pdata->hp_switch_en_gpio, 0);
+	}
+
+	return 0;
+}
+
+static int enable_hp_ext_switch(struct snd_soc_codec *codec, int enable)
+{
+	struct snd_soc_card *card = codec->card;
+	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	int ret;
+
+	if (!gpio_is_valid(pdata->hp_switch_en_gpio)) {
+		pr_err("%s: Invalid gpio: %d\n", __func__,
+			pdata->hp_switch_en_gpio);
+		return false;
+	}
+
+	pr_err("%s: %s headphone_switch\n", __func__,
+		enable ? "Enable" : "Disable");
+
+	if (enable) {
+		ret = msm_gpioset_activate(CLIENT_WCD_INT, "hp_switch_gpio");
+		if (ret) {
+			pr_err("%s: gpio set cannot be activated %s\n",
+					__func__, "hp_switch_gpio");
+			return ret;
+		}
+		gpio_set_value_cansleep(pdata->hp_switch_en_gpio, enable);
+	} else {
+		gpio_set_value_cansleep(pdata->hp_switch_en_gpio, enable);
+		ret = msm_gpioset_suspend(CLIENT_WCD_INT, "hp_switch_gpio");
+		if (ret) {
+			pr_err("%s: gpio set cannot be de-activated %s\n",
+					__func__, "hp_switch_gpio");
+			return ret;
+		}
+	}
+	return 0;
+}
+#endif
+
 /* Validate whether US EU switch is present or not */
 int is_us_eu_switch_gpio_support(struct platform_device *pdev,
 		struct msm8916_asoc_mach_data *pdata)
@@ -364,6 +434,38 @@ int is_us_eu_switch_gpio_support(struct platform_device *pdev,
 	}
 	return 0;
 }
+
+#ifdef CONFIG_MACH_PANDA
+static int msm8952_get_sw_en(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	if (gpio_is_valid(switch_en_gpio))
+	{
+		pr_debug("%s switch_en_gpio %d=%d\n", __func__, switch_en_gpio, gpio_get_value(switch_en_gpio));
+		ucontrol->value.integer.value[0] = gpio_get_value(switch_en_gpio);
+	}
+	return 0;
+}
+
+static int msm8952_set_sw_en(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_err("%s switch_en_gpio %d\n", __func__,switch_en_gpio);
+
+	if (ucontrol->value.integer.value[0] > 0) {
+		if (gpio_is_valid(switch_en_gpio)) {
+			gpio_direction_output(switch_en_gpio, 1);
+			pr_err( "%s: Enabled switch en\n",__func__);
+		}
+	} else {
+		if (gpio_is_valid(switch_en_gpio)) {
+			gpio_direction_output(switch_en_gpio, 0);
+			pr_err("%s: Disabled switch en\n", __func__);
+		}
+	}
+	return 1;
+}
+#endif
 
 static int msm_proxy_rx_ch_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
@@ -961,6 +1063,9 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, loopback_mclk_text),
 	SOC_ENUM_SINGLE_EXT(8, proxy_rx_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, vi_feed_ch_text),
+#ifdef CONFIG_MACH_PANDA
+	SOC_ENUM_SINGLE_EXT(2, switch_en_function),
+#endif
 };
 
 static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
@@ -984,6 +1089,10 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_proxy_rx_ch_get, msm_proxy_rx_ch_put),
 	SOC_ENUM_EXT("VI_FEED_TX Channels", msm_snd_enum[4],
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
+#ifdef CONFIG_MACH_PANDA
+	SOC_ENUM_EXT("Ext HP", msm_snd_enum[5], msm8952_get_sw_en,
+			msm8952_set_sw_en),
+#endif
 
 };
 
@@ -1608,6 +1717,9 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_sync(dapm);
 
 	msm8x16_wcd_spk_ext_pa_cb(enable_spk_ext_pa, codec);
+#ifdef CONFIG_MACH_PANDA
+	msm8x16_wcd_headphone_switch(enable_hp_ext_switch, codec);
+#endif
 
 	mbhc_cfg.calibration = def_msm8952_wcd_mbhc_cal();
 	if (mbhc_cfg.calibration) {
@@ -2948,6 +3060,13 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 	if (ret < 0)
 		pr_debug("%s:  doesn't support external speaker pa\n",
 				__func__);
+
+#ifdef CONFIG_MACH_PANDA
+	ret = is_ext_hp_switch_gpio_support(pdev, pdata);
+	if (ret < 0)
+		pr_err("%s:  doesn't support headphone switch\n",
+				__func__);
+#endif
 
 	ret = ext_audio_switch_support(pdev, pdata);
 	if (ret < 0)
