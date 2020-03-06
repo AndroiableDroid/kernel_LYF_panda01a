@@ -410,9 +410,9 @@
 	qcom,battery-data = <&qrd_batterydata>;
 	qcom,float-voltage-mv = <4400>;
 	qcom,iterm-ma = <150>;
-	qcom,chg-led-sw-controls;
+//	qcom,chg-led-sw-controls;
 	qcom,thermal-mitigation = <2000 800 600 0>;
-	qcom,chg-led-support;
+//	qcom,chg-led-support;
 	status = "okay";
 };
 
