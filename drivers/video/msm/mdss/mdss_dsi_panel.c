@@ -35,6 +35,12 @@ DEFINE_LED_TRIGGER(bl_led_trigger);
 static int flag = 0;
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_ILI2120
+extern int ilitek_i2c_resume(void);
+extern void send_ilitek_TP_suspend_scnd_cmd(void);
+extern int ilitek_gesture_enable;
+#endif
+
 #define CEIL(x, y)	(((x) + ((y)-1)) / (y))
 
 static u32 rc_buf_thresh[] = {0x0e, 0x1c, 0x2a, 0x38, 0x46, 0x54, 0x62,
@@ -281,6 +287,11 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	struct mdss_panel_info *pinfo = NULL;
 	int i, rc = 0, mode_sel = 0;
 
+#ifdef CONFIG_TOUCHSCREEN_ILI2120
+	if (enable == 1)
+		ilitek_i2c_resume();
+#endif
+
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -383,7 +394,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->lcd_mode_sel_gpio))
 			gpio_free(ctrl_pdata->lcd_mode_sel_gpio);
@@ -779,6 +790,11 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_TOUCHSCREEN_ILI2120
+	if (ilitek_gesture_enable == 1)
+		send_ilitek_TP_suspend_scnd_cmd();
+#endif
 
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
