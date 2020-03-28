@@ -2419,6 +2419,43 @@ end:
 	return dsi_pan_node;
 }
 
+#ifdef CONFIG_MACH_PANDA
+static const char *buf_lcd_info;
+static struct class *lcd_class;
+
+static ssize_t lcd_info_show(struct class *class,
+		struct class_attribute *attr, char *buf)
+{
+	if (buf_lcd_info)
+		return snprintf(buf, strlen(buf_lcd_info) + 2, "%s\n", buf_lcd_info);
+
+	return 0;
+}
+
+static CLASS_ATTR(lcd_info, S_IRUSR, lcd_info_show, NULL);
+
+static int create_lcd_info(struct platform_device *pdev, struct device_node *node)
+{
+	int rc = 0;
+
+	lcd_class = class_create(THIS_MODULE, "lcd");
+	if (IS_ERR_OR_NULL(lcd_class))
+		return PTR_ERR(lcd_class);
+
+	rc = class_create_file(lcd_class, &class_attr_lcd_info);
+	if (rc < 0) {
+		pr_err("%s: class_crate_file error!\n", __func__);
+		class_destroy(lcd_class);
+		return rc;
+	}
+
+	if (node)
+		buf_lcd_info = of_get_property(node, "qcom,mdss-dsi-panel-name", NULL);
+
+	return rc;
+}
+#endif
+
 static struct device_node *mdss_dsi_config_panel(struct platform_device *pdev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = platform_get_drvdata(pdev);
@@ -2566,6 +2603,12 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&ctrl_pdata->dba_work, mdss_dsi_dba_work);
 
 	mdss_dsi_pm_qos_add_request(ctrl_pdata);
+
+#ifdef CONFIG_MACH_PANDA
+	rc = create_lcd_info(pdev, dsi_pan_node);
+	if (rc < 0)
+		pr_err("%s create lcd info error!\n", __func__);
+#endif
 
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 
