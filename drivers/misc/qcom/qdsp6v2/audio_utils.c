@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2016, 2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -757,7 +757,7 @@ ssize_t audio_in_read(struct file *file,
 			count -= bytes_to_copy;
 			buf += bytes_to_copy;
 		} else {
-			pr_err("%s:session id %d: short read data[%p] bytesavail[%d]bytesrequest[%zd]\n",
+			pr_err("%s:session id %d: short read data[%pK] bytesavail[%d]bytesrequest[%zd]\n",
 				__func__,
 				audio->ac->session,
 				data, size, count);
@@ -879,8 +879,7 @@ ssize_t audio_in_write(struct file *file,
 						__func__, audio->ac->session);
 			}
 		}
-		xfer = (count > (audio->pcm_cfg.buffer_size)) ?
-				(audio->pcm_cfg.buffer_size) : count;
+		xfer = (count > size) ? size : count;
 
 		if (copy_from_user(cpy_ptr, buf, xfer)) {
 			rc = -EFAULT;
@@ -896,7 +895,7 @@ ssize_t audio_in_write(struct file *file,
 		buf += xfer;
 	}
 	mutex_unlock(&audio->write_lock);
-	pr_debug("%s:session id %d: eos_condition 0x%x buf[0x%p] start[0x%p]\n",
+	pr_debug("%s:session id %d: eos_condition 0x%x buf[0x%pK] start[0x%pK]\n",
 				__func__, audio->ac->session,
 				nflags, buf, start);
 	if (nflags & AUD_EOS_SET) {

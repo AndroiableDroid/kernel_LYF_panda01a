@@ -1350,9 +1350,8 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 			if (mfd->mdp.ad_calc_bl)
 				(*mfd->mdp.ad_calc_bl)(mfd, temp, &temp,
 								&bl_notify);
-			if (bl_notify)
-				sysfs_notify(&mfd->fbi->dev->kobj, NULL,
-								"pp_bl_event");
+
+			sysfs_notify(&mfd->fbi->dev->kobj, NULL, "pp_bl_event");
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level_scaled = mfd->unset_bl_level;
 			mfd->allow_bl_update = true;
@@ -1728,7 +1727,7 @@ void mdss_fb_free_fb_ion_memory(struct msm_fb_data_type *mfd)
 int mdss_fb_alloc_fb_ion_memory(struct msm_fb_data_type *mfd, size_t fb_size)
 {
 	unsigned long buf_size;
-	int rc;
+	int rc = 0;
 	void *vaddr;
 
 	if (!mfd) {
@@ -1781,7 +1780,7 @@ int mdss_fb_alloc_fb_ion_memory(struct msm_fb_data_type *mfd, size_t fb_size)
 		goto fb_mmap_failed;
 	}
 
-	pr_debug("alloc 0x%zuB vaddr = %p (%pa iova) for fb%d\n", fb_size,
+	pr_debug("alloc 0x%zuB vaddr = %pK (%pa iova) for fb%d\n", fb_size,
 			vaddr, &mfd->iova, mfd->index);
 
 	mfd->fbi->screen_base = (char *) vaddr;
@@ -1874,7 +1873,7 @@ static int mdss_fb_fbmem_ion_mmap(struct fb_info *info,
 				vma->vm_page_prot =
 					pgprot_writecombine(vma->vm_page_prot);
 
-			pr_debug("vma=%p, addr=%x len=%ld\n",
+			pr_debug("vma=%pK, addr=%x len=%ld\n",
 					vma, (unsigned int)addr, len);
 			pr_debug("vm_start=%x vm_end=%x vm_page_prot=%ld\n",
 					(unsigned int)vma->vm_start,
@@ -2044,7 +2043,7 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 	if (rc)
 		pr_warn("Cannot map fb_mem %pa to IOMMU. rc=%d\n", &phys, rc);
 
-	pr_debug("alloc 0x%zxB @ (%pa phys) (0x%p virt) (%pa iova) for fb%d\n",
+	pr_debug("alloc 0x%zxB @ (%pa phys) (0x%pK virt) (%pa iova) for fb%d\n",
 		 size, &phys, virt, &mfd->iova, mfd->index);
 
 	mfd->fbi->screen_base = virt;
@@ -3010,6 +3009,7 @@ static void mdss_fb_var_to_panelinfo(struct fb_var_screeninfo *var,
 static void mdss_panelinfo_to_fb_var(struct mdss_panel_info *pinfo,
 						struct fb_var_screeninfo *var)
 {
+	u32 frame_rate;
 	struct mdss_panel_data *pdata = container_of(pinfo,
 				struct mdss_panel_data, panel_info);
 
@@ -3021,7 +3021,21 @@ static void mdss_panelinfo_to_fb_var(struct mdss_panel_info *pinfo,
 	var->right_margin = pinfo->lcdc.h_front_porch;
 	var->left_margin = pinfo->lcdc.h_back_porch;
 	var->hsync_len = pinfo->lcdc.h_pulse_width;
-	var->pixclock = pinfo->clk_rate;
+
+	frame_rate = mdss_panel_get_framerate(pinfo);
+	if (frame_rate) {
+		unsigned long clk_rate, h_total, v_total;
+
+		h_total = var->xres + var->left_margin
+			+ var->right_margin + var->hsync_len;
+		v_total = var->yres + var->lower_margin
+			+ var->upper_margin + var->vsync_len;
+		clk_rate = h_total * v_total * frame_rate;
+		var->pixclock = KHZ2PICOS(clk_rate / 1000);
+	} else if (pinfo->clk_rate) {
+		var->pixclock = KHZ2PICOS(
+				(unsigned long int) pinfo->clk_rate / 1000);
+	}
 }
 
 /**
