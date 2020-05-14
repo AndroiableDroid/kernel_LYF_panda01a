@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -933,15 +933,12 @@ static int venus_hfi_vote_active_buses(void *dev,
 		return -EINVAL;
 	}
 
-	/* (Re-)alloc memory to store the new votes (in case we internally
-	 * re-vote after power collapse, which is transparent to client) */
-	cached_vote_data = krealloc(device->bus_load.vote_data, num_data *
-			sizeof(*cached_vote_data), GFP_KERNEL);
-	if (!cached_vote_data) {
-		dprintk(VIDC_ERR, "Can't alloc memory to cache bus votes\n");
-		rc = -ENOMEM;
-		goto err_no_mem;
-	}
+        cached_vote_data = device->bus_load.vote_data;
+        if (!cached_vote_data) {
+                dprintk(VIDC_ERR,"Invalid bus load vote data\n");
+                rc = -ENOMEM;
+                goto err_no_mem;
+        }
 
 	/* Alloc & init the load table */
 	num_bus = device->res->bus_set.count;
@@ -3499,12 +3496,14 @@ skip_power_off:
 	return;
 }
 
-static void venus_hfi_process_msg_event_notify(
+static void print_sfr_message(
 	struct venus_hfi_device *device, void *packet)
 {
 	struct hfi_sfr_struct *vsfr = NULL;
 	struct hfi_msg_event_notify_packet *event_pkt;
 	struct vidc_hal_msg_pkt_hdr *msg_hdr;
+        u32 vsfr_size = 0;
+        void *p = NULL;
 
 	msg_hdr = (struct vidc_hal_msg_pkt_hdr *)packet;
 	event_pkt =
@@ -3525,13 +3524,11 @@ static void venus_hfi_process_msg_event_notify(
 		vsfr = (struct hfi_sfr_struct *)
 				device->sfr.align_virtual_addr;
 		if (vsfr) {
-			void *p = memchr(vsfr->rg_data, '\0',
-							vsfr->bufSize);
-			/* SFR isn't guaranteed to be NULL terminated
-			since SYS_ERROR indicates that Venus is in the
-			process of crashing.*/
+			vsfr_size = vsfr->bufSize - sizeof(u32);
+			p = memchr(vsfr->rg_data, '\0', vsfr_size);
+			/* SFR isn't guaranteed to be NULL terminated */
 			if (p == NULL)
-				vsfr->rg_data[vsfr->bufSize - 1] = '\0';
+				vsfr->rg_data[vsfr_size - 1] = '\0';
 			dprintk(VIDC_ERR, "SFR Message from FW : %s\n",
 				vsfr->rg_data);
 		}
@@ -3664,7 +3661,6 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 {
 	u8 *packet = NULL;
 	u32 rc = 0;
-	struct hfi_sfr_struct *vsfr = NULL;
 
 	/*
 	 * check for clock adjust request from firmware
@@ -3685,12 +3681,7 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 			VIDC_WRAPPER_INTR_CLEAR_A2HWD_BMSK)) {
 			dprintk(VIDC_ERR, "Received: Watchdog timeout %s\n",
 				__func__);
-			vsfr = (struct hfi_sfr_struct *)
-					device->sfr.align_virtual_addr;
-			if (vsfr)
-				dprintk(VIDC_ERR,
-					"SFR Message from FW : %s\n",
-						vsfr->rg_data);
+			print_sfr_message(device, (void *)packet);
 			venus_hfi_process_sys_watchdog_timeout(device);
 		}
 
@@ -3716,7 +3707,7 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 				(struct vidc_hal_msg_pkt_hdr *) packet,
 				&device->sess_head, &device->session_lock);
 			if (rc == HFI_MSG_EVENT_NOTIFY) {
-				venus_hfi_process_msg_event_notify(
+				print_sfr_message(
 					device, (void *)packet);
 			} else if (rc == HFI_MSG_SYS_RELEASE_RESOURCE) {
 				dprintk(VIDC_DBG,
@@ -4135,9 +4126,15 @@ static int venus_hfi_init_bus(struct venus_hfi_device *device)
 		dprintk(VIDC_DBG, "Registered bus client %s\n", name);
 	}
 
-	device->bus_load.vote_data = NULL;
-	device->bus_load.vote_data_count = 0;
+        device->bus_load.vote_data = (struct vidc_bus_vote_data *)
+                                        kzalloc(sizeof(struct vidc_bus_vote_data)*MAX_SUPPORTED_INSTANCES_COUNT, GFP_KERNEL);
 
+        if (device->bus_load.vote_data == NULL) {
+                dprintk(VIDC_ERR,"Failed to allocate memory for vote_data\n");
+                rc = -ENOMEM;
+                goto err_init_bus;
+        }
+        device->bus_load.vote_data_count = 0;
 	return rc;
 err_init_bus:
 	venus_hfi_deinit_bus(device);

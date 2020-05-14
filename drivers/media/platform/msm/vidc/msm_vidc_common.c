@@ -52,6 +52,39 @@
 #define IS_SYS_CMD_VALID(cmd) (((cmd) >= SYS_MSG_START) && \
 		((cmd) <= SYS_MSG_END))
 
+const char *const mpeg_video_vidc_extradata[] = {
+	"Extradata none",
+	"Extradata MB Quantization",
+	"Extradata Interlace Video",
+	"Extradata VC1 Framedisp",
+	"Extradata VC1 Seqdisp",
+	"Extradata timestamp",
+	"Extradata S3D Frame Packing",
+	"Extradata Frame Rate",
+	"Extradata Panscan Window",
+	"Extradata Recovery point SEI",
+	"Extradata Multislice info",
+	"Extradata number of concealed MB",
+	"Extradata metadata filler",
+	"Extradata input crop",
+	"Extradata digital zoom",
+	"Extradata aspect ratio",
+	"Extradata mpeg2 seqdisp",
+	"Extradata stream userdata",
+	"Extradata frame QP",
+	"Extradata frame bits info",
+	"Extradata LTR",
+	"Extradata macroblock metadata",
+	"Extradata VQZip SEI",
+	"Extradata YUV Stats",
+	"Extradata ROI QP",
+	"Extradata output crop",
+	"Extradata display colour SEI",
+	"Extradata light level SEI",
+	"Extradata display VUI",
+	"Extradata vpx color space",
+};
+
 struct getprop_buf {
 	struct list_head list;
 	void *data;
@@ -96,7 +129,6 @@ int msm_comm_g_ctrl(struct msm_vidc_inst *inst, int id)
 	rc = v4l2_g_ctrl(&inst->ctrl_handler, &ctrl);
 	return rc ?: ctrl.value;
 }
-
 enum multi_stream msm_comm_get_stream_output_mode(struct msm_vidc_inst *inst)
 {
 	if (inst->session_type == MSM_VIDC_DECODER) {
@@ -1110,6 +1142,10 @@ static void handle_session_flush(enum command_response cmd, void *data)
 {
 	struct msm_vidc_cb_cmd_done *response = data;
 	struct msm_vidc_inst *inst;
+	struct v4l2_event flush_event = {0};
+	u32 *ptr = NULL;
+	enum hal_flush flush_type;
+	struct vidc_hal_session_flush_done *sesion_flush_done;
 	int rc;
 	if (response) {
 		inst = (struct msm_vidc_inst *)response->session_id;
@@ -1125,7 +1161,31 @@ static void handle_session_flush(enum command_response cmd, void *data)
 				}
 			}
 		}
-		msm_vidc_queue_v4l2_event(inst, V4L2_EVENT_MSM_VIDC_FLUSH_DONE);
+        	flush_event.type = V4L2_EVENT_MSM_VIDC_FLUSH_DONE;
+	        ptr = (u32 *)flush_event.u.data;
+
+        	sesion_flush_done = response->data;
+                flush_type = sesion_flush_done->flush_type;
+	        switch (flush_type) {
+        	case HAL_FLUSH_INPUT:
+                	ptr[0] = V4L2_QCOM_CMD_FLUSH_OUTPUT;
+                	break;
+	        case HAL_FLUSH_OUTPUT:
+        	        ptr[0] = V4L2_QCOM_CMD_FLUSH_CAPTURE;
+                	break;
+	        case HAL_FLUSH_ALL:
+        	        ptr[0] |= V4L2_QCOM_CMD_FLUSH_CAPTURE;
+                	ptr[0] |= V4L2_QCOM_CMD_FLUSH_OUTPUT;
+	                break;
+        	default:
+                	dprintk(VIDC_ERR, "Invalid flush type received!");
+	                return;
+        	}
+
+	        dprintk(VIDC_DBG,
+        	        "Notify flush complete, flush_type: %x\n", flush_type);
+        	v4l2_event_queue_fh(&inst->event_handler, &flush_event);
+
 	} else {
 		dprintk(VIDC_ERR, "Failed to get valid response for flush\n");
 	}
@@ -4087,6 +4147,18 @@ enum hal_extradata_id msm_comm_get_hal_extradata_index(
 		break;
 	case V4L2_MPEG_VIDC_EXTRADATA_METADATA_MBI:
 		ret = HAL_EXTRADATA_METADATA_MBI;
+		break;
+	case V4L2_MPEG_VIDC_EXTRADATA_DISPLAY_COLOUR_SEI:
+		ret = HAL_EXTRADATA_MASTERING_DISPLAY_COLOUR_SEI;
+		break;
+	case V4L2_MPEG_VIDC_EXTRADATA_CONTENT_LIGHT_LEVEL_SEI:
+		ret = HAL_EXTRADATA_CONTENT_LIGHT_LEVEL_SEI;
+		break;
+	case V4L2_MPEG_VIDC_EXTRADATA_VUI_DISPLAY:
+		ret = HAL_EXTRADATA_VUI_DISPLAY_INFO;
+		break;
+	case V4L2_MPEG_VIDC_EXTRADATA_VPX_COLORSPACE:
+		ret = HAL_EXTRADATA_VPX_COLORSPACE;
 		break;
 	default:
 		dprintk(VIDC_WARN, "Extradata not found: %d\n", index);
